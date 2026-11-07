@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- Clima costero — Matías Nicolás Echeveste Cardozo -->
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clima costero de Rocha</title>
+  <style>
+    :root { color-scheme: light dark; --fondo: #f6f8fa; --tarjeta: #fff; --texto: #1b1f24; --suave: #57606a;
+      --ok: #1a7f37; --precaucion: #9a6700; --mal: #cf222e; font-family: system-ui, sans-serif; }
+    @media (prefers-color-scheme: dark) { :root { --fondo: #0d1117; --tarjeta: #161b22; --texto: #e6edf3; --suave: #9198a1;
+      --ok: #3fb950; --precaucion: #d29922; --mal: #f85149; } }
+    body { margin: 0; background: var(--fondo); color: var(--texto); }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    p.sub { margin: 0 0 24px; color: var(--suave); }
+    .grilla { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    article { background: var(--tarjeta); border-radius: 12px; padding: 16px; border: 1px solid #8884; }
+    h2 { margin: 0; font-size: 1.1rem; }
+    .loc { color: var(--suave); font-size: .9rem; margin: 0 0 12px; }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 12px; }
+    dt { color: var(--suave); } dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .nivel { font-weight: 600; } .favorable { color: var(--ok); } .precaucion { color: var(--precaucion); }
+    .desaconsejado { color: var(--mal); }
+    footer { margin-top: 32px; color: var(--suave); font-size: .85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Clima costero de Rocha</h1>
+  <p class="sub">Viento, oleaje y temperatura actuales en playas del departamento.</p>
+  <div class="grilla" id="playas" aria-live="polite"></div>
+  <footer>Datos: Open-Meteo (CC BY 4.0). Orientativo: respete siempre las indicaciones de los guardavidas.</footer>
+</main>
+<script>
+  const ETIQUETAS = { favorable: 'Favorable', precaucion: 'Precaución', desaconsejado: 'Desaconsejado' }
+  const fmt = (v, u) => (v === null || v === undefined ? 'sin dato' : `${v} ${u}`)
+  function fila(dl, nombre, valor) {
+    const dt = document.createElement('dt'); dt.textContent = nombre
+    const dd = document.createElement('dd'); dd.textContent = valor
+    dl.append(dt, dd)
+  }
+  async function cargar() {
+    const contenedor = document.getElementById('playas')
+    const playas = await (await fetch('/api/playas')).json()
+    for (const p of playas) {
+      const art = document.createElement('article')
+      const h2 = document.createElement('h2'); h2.textContent = p.localidad
+      const loc = document.createElement('p'); loc.className = 'loc'; loc.textContent = p.nombre
+      const estado = document.createElement('p'); estado.textContent = 'Consultando…'
+      art.append(h2, loc, estado)
+      contenedor.append(art)
+      fetch(`/api/playas/${p.slug}/condiciones`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))).then((c) => {
+        const dl = document.createElement('dl')
+        fila(dl, 'Temperatura', fmt(c.temperatura_c, '°C'))
+        fila(dl, 'Viento', `${c.viento_kmh} km/h ${c.direccion_viento} (ráfagas ${c.rafagas_kmh})`)
+        fila(dl, 'Olas', fmt(c.olas_m, 'm'))
+        fila(dl, 'Agua', fmt(c.temperatura_agua_c, '°C'))
+        estado.className = `nivel ${c.nivel}`
+        estado.textContent = ETIQUETAS[c.nivel] + (c.motivos.length ? `: ${c.motivos.join(', ')}` : '')
+        art.insertBefore(dl, estado)
+      }).catch(() => { estado.textContent = 'No se pudo obtener el pronóstico.' })
+    }
+  }
+  cargar()
+</script>
+</body>
+</html>

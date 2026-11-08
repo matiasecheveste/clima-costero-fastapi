@@ -22,6 +22,7 @@
     dt { color: var(--suave); } dd { margin: 0; font-variant-numeric: tabular-nums; }
     .nivel { font-weight: 600; } .favorable { color: var(--ok); } .precaucion { color: var(--precaucion); }
     .desaconsejado { color: var(--mal); }
+    .hora { color: var(--suave); font-size: .8rem; margin: 8px 0 0; }
     footer { margin-top: 32px; color: var(--suave); font-size: .85rem; }
   </style>
 </head>
@@ -34,7 +35,9 @@
 </main>
 <script>
   const ETIQUETAS = { favorable: 'Favorable', precaucion: 'Precaución', desaconsejado: 'Desaconsejado' }
-  const fmt = (v, u) => (v === null || v === undefined ? 'sin dato' : `${v} ${u}`)
+  const numero = (v, decimales) => v.toLocaleString('es-UY', { minimumFractionDigits: decimales, maximumFractionDigits: decimales })
+  const fmt = (v, u, decimales = 1) => (v === null || v === undefined ? 'sin dato' : `${numero(v, decimales)} ${u}`)
+  const horaDe = (iso) => (iso && iso.includes('T') ? iso.split('T')[1].slice(0, 5) : null)
   function fila(dl, nombre, valor) {
     const dt = document.createElement('dt'); dt.textContent = nombre
     const dd = document.createElement('dd'); dd.textContent = valor
@@ -53,13 +56,18 @@
       fetch(`/api/playas/${p.slug}/condiciones`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))).then((c) => {
         const dl = document.createElement('dl')
         fila(dl, 'Temperatura', fmt(c.temperatura_c, '°C'))
-        fila(dl, 'Viento', `${c.viento_kmh} km/h ${c.direccion_viento} (ráfagas ${c.rafagas_kmh})`)
+        fila(dl, 'Viento', `${fmt(c.viento_kmh, 'km/h', 0)} ${c.direccion_viento} (ráfagas de ${fmt(c.rafagas_kmh, 'km/h', 0)})`)
         fila(dl, 'Olas', fmt(c.olas_m, 'm'))
         fila(dl, 'Agua', fmt(c.temperatura_agua_c, '°C'))
         estado.className = `nivel ${c.nivel}`
         estado.textContent = ETIQUETAS[c.nivel] + (c.motivos.length ? `: ${c.motivos.join(', ')}` : '')
         art.insertBefore(dl, estado)
-      }).catch(() => { estado.textContent = 'No se pudo obtener el pronóstico.' })
+        const hora = horaDe(c.hora)
+        if (hora) {
+          const pie = document.createElement('p'); pie.className = 'hora'; pie.textContent = `Dato de las ${hora}`
+          art.append(pie)
+        }
+      }).catch(() => { estado.textContent = 'No se pudieron obtener las condiciones actuales.' })
     }
   }
   cargar()

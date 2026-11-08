@@ -43,6 +43,11 @@ async def inicio() -> FileResponse:
     return FileResponse(ESTATICOS / "index.html")
 
 
+@app.get("/icono.svg", include_in_schema=False)
+async def icono() -> FileResponse:
+    return FileResponse(ESTATICOS / "icono.svg", media_type="image/svg+xml")
+
+
 @app.get("/api/playas", response_model=list[dict])
 async def listar_playas() -> list[dict]:
     return [{"slug": p.slug, "nombre": p.nombre, "localidad": p.localidad} for p in PLAYAS]
